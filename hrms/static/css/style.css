@@ -1,10 +1,58 @@
 /* Add your custom styles here */
 body {
-    padding-bottom: 60px; /* Adjust if footer height changes */
+    /* Add padding to prevent footer overlap if footer is fixed-bottom */
+    padding-bottom: 70px;
+    background-color: #f8f9fa; /* Light background for contrast */
 }
 
-.card-title i {
-    color: #0d6efd; /* Primary color for icons in cards */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
 }
 
-/* Add more specific styles for modules */
+.card {
+    border: none; /* Remove default card border */
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); /* Softer shadow */
+}
+
+.card-header {
+    font-weight: 500;
+}
+
+/* Enhance table appearance */
+.table {
+    border-collapse: separate; /* Allows border-radius */
+    border-spacing: 0;
+}
+.table th {
+    font-weight: 500;
+    white-space: nowrap; /* Prevent headers from wrapping */
+}
+.table td {
+    vertical-align: middle; /* Align cell content vertically */
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.04); /* Subtle hover effect */
+}
+
+/* Style action buttons */
+.table .btn-sm {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.8rem;
+}
+
+/* Flash messages */
+.alert {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Required field asterisk */
+label .text-danger {
+    font-weight: normal;
+    margin-left: 2px;
+}
+
+/* Footer */
+footer.fixed-bottom {
+    border-top: 1px solid #dee2e6; /* Add a top border */
+}
