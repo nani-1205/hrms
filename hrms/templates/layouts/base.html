@@ -14,7 +14,11 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">HRMS</a>
+            <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
+                {# Optional: Add logo image here #}
+                {# <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" height="30" class="d-inline-block align-text-top me-2"> #}
+                HRMS
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -22,44 +26,65 @@
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     {% if current_user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+                        <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" aria-current="page" href="{{ url_for('main.dashboard') }}">Dashboard</a>
                     </li>
+                    {# Add access control for specific links based on role if needed #}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('employee.list_employees') }}">Employees</a>
+                        <a class="nav-link {% if request.blueprint == 'employee' %}active{% endif %}" href="{{ url_for('employee.list_employees') }}">Employees</a>
                     </li>
-                     <li class="nav-item">
-                        <a class="nav-link" href="#">Leave</a> <!-- Add url_for link -->
-                    </li>
+                     <li class="nav-item dropdown">
+                       <a class="nav-link dropdown-toggle {% if request.blueprint == 'leave' %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                         Leave
+                       </a>
+                       <ul class="dropdown-menu">
+                         <li><a class="dropdown-item" href="{{ url_for('leave.request_leave') }}">Request Leave</a></li>
+                         <li><a class="dropdown-item" href="{{ url_for('leave.view_history') }}">My History</a></li>
+                         {% if current_user.role in ['manager', 'hr', 'admin'] %}
+                           <li><hr class="dropdown-divider"></li>
+                           <li><a class="dropdown-item" href="{{ url_for('leave.view_approvals') }}">Leave Approvals</a></li>
+                         {% endif %}
+                       </ul>
+                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Attendance</a> <!-- Add url_for link -->
+                        <a class="nav-link disabled" href="#">Attendance</a> {# Add url_for when implemented #}
                     </li>
+                     {# Example Admin Dropdown #}
                      {% if current_user.role in ['admin', 'hr'] %}
                      <li class="nav-item dropdown">
                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                          Admin
                        </a>
                        <ul class="dropdown-menu">
-                         <li><a class="dropdown-item" href="#">Users</a></li>
-                         <li><a class="dropdown-item" href="#">Settings</a></li>
+                         <li><a class="dropdown-item" href="#">Users</a></li> {# Add url_for #}
+                         <li><a class="dropdown-item" href="#">Departments</a></li> {# Add url_for #}
+                         <li><a class="dropdown-item" href="#">Settings</a></li> {# Add url_for #}
                          <li><hr class="dropdown-divider"></li>
-                         <li><a class="dropdown-item" href="#">Reports</a></li>
+                         <li><a class="dropdown-item" href="#">Reports</a></li> {# Add url_for #}
                        </ul>
                      </li>
                      {% endif %}
                      {% else %}
+                     {# Show login link if user is not authenticated #}
                      <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+                        <a class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}" href="{{ url_for('auth.login') }}">Login</a>
                      </li>
+                      {# Optionally show register link #}
+                      {# {% if config.ALLOW_REGISTRATION %}
+                      <li class="nav-item">
+                         <a class="nav-link {% if request.endpoint == 'auth.register' %}active{% endif %}" href="{{ url_for('auth.register') }}">Register</a>
+                      </li>
+                      {% endif %} #}
                      {% endif %}
                 </ul>
+                {# User profile dropdown on the right #}
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                      {% if current_user.is_authenticated %}
                      <li class="nav-item dropdown">
                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                         <i class="fas fa-user me-1"></i> {{ current_user.username }} ({{ current_user.role }})
+                         <i class="fas fa-user me-1"></i> {{ current_user.username }} ({{ current_user.role | capitalize }})
                        </a>
                        <ul class="dropdown-menu dropdown-menu-end">
-                         <li><a class="dropdown-item" href="#">Profile</a></li>
+                         <li><a class="dropdown-item" href="#">Profile</a></li> {# Add url_for for profile page #}
                          <li><hr class="dropdown-divider"></li>
                          <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
                        </ul>
@@ -71,13 +96,16 @@
     </nav>
 
     <main class="container mt-4">
-        {% include 'partials/_flash_messages.html' %} <!-- Include flash messages partial -->
+        {# Include flash messages partial. Ensure this file exists: templates/partials/_flash_messages.html #}
+        {% include 'partials/_flash_messages.html' %}
+        {# Main content block for child templates #}
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="mt-5 py-3 bg-light text-center">
+    <footer class="mt-5 py-3 bg-light text-center fixed-bottom"> {# Added fixed-bottom for visibility if content is short #}
         <div class="container">
-            <span class="text-muted">HRMS Project © {{ now().year }}</span>
+             {# ---> Updated this line <--- #}
+            <span class="text-muted">HRMS Project © {{ now.year }}</span>
         </div>
     </footer>
 
@@ -85,5 +113,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {# Add block for page-specific JS if needed #}
+    {% block scripts %}{% endblock %}
 </body>
 </html>

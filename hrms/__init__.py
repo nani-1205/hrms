@@ -1,13 +1,12 @@
 # hrms/__init__.py
 
 import os
+import datetime # <--- Added import
 from flask import Flask
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from flask_login import LoginManager
 from .config import get_config
-# Remove the User import from here:
-# from .models.user import User
 
 # Initialize extensions
 login_manager = LoginManager()
@@ -18,11 +17,8 @@ mongo_client = None
 db = None
 
 # --- Function to get the database instance ---
-# Define get_db BEFORE create_app if models might need it globally,
-# but ensure it relies on 'db' which is set within create_app.
 def get_db():
     """Returns the MongoDB database instance."""
-    # This relies on 'db' being initialized by create_app first.
     if db is None:
         raise RuntimeError("Database not initialized. Ensure create_app() was called and DB connection succeeded.")
     return db
@@ -35,9 +31,16 @@ def create_app():
     app_config = get_config()
     app.config.from_object(app_config)
 
+    # --- Add Context Processor --- # <--- Added section
+    @app.context_processor
+    def inject_now():
+        """Injects the current UTC datetime into template context."""
+        # Use utcnow() for timezone consistency, common in web apps
+        return {'now': datetime.datetime.utcnow()}
+    # ----------------------------- #
+
     # --- Initialize MongoDB Client and Database ---
     try:
-        # ... (Keep your existing MongoDB connection logic here) ...
         mongo_host = app_config.MONGO_HOST
         mongo_port = app_config.MONGO_PORT
         mongo_dbname = app_config.MONGO_DBNAME
@@ -48,27 +51,33 @@ def create_app():
         connection_args = {
             'host': mongo_host,
             'port': mongo_port,
+            # Optional: Add TLS/SSL settings if needed
+            # 'tls': True,
         }
+
         if mongo_username and mongo_password:
             connection_args['username'] = mongo_username
             connection_args['password'] = mongo_password
             connection_args['authSource'] = mongo_auth_source
-            connection_args['authMechanism'] = 'SCRAM-SHA-256'
+            connection_args['authMechanism'] = 'SCRAM-SHA-256' # Adjust if needed
             print(f"Attempting MongoDB connection to {mongo_host}:{mongo_port} DB: '{mongo_dbname}' with user '{mongo_username}' (authSource: {mongo_auth_source})")
         else:
             print(f"Attempting MongoDB connection to {mongo_host}:{mongo_port} DB: '{mongo_dbname}' without authentication")
 
         mongo_client = MongoClient(**connection_args)
-        mongo_client.admin.command('ismaster')
+
+        # Test connection
+        mongo_client.admin.command('ismaster') # Use ismaster or ping
         print("Successfully connected to MongoDB server!")
-        db = mongo_client[mongo_dbname] # Assign to the global 'db' variable
-        app.db = db
+
+        db = mongo_client[mongo_dbname] # Select the specific database
+        app.db = db # Make db accessible via app context if needed
 
     except ConnectionFailure as e:
         print(f"CRITICAL: Could not connect to MongoDB server at {app_config.MONGO_HOST}:{app_config.MONGO_PORT}. Error: {e}")
         print("Please check your MongoDB server status and connection details in .env")
-        exit(1)
-    except Exception as e:
+        exit(1) # Exit if database connection fails on startup
+    except Exception as e: # Catch other potential errors during connection setup
         print(f"CRITICAL: An unexpected error occurred during MongoDB initialization: {e}")
         exit(1)
 
@@ -77,14 +86,12 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        # ---> Import User model *inside* the function <---
+        # Import User model *inside* the function to avoid circular imports
         from .models.user import User
-        # This function is only called during requests when a user needs
-        # to be loaded, by which time all modules are fully imported.
         return User.get_by_id(user_id)
 
     # --- Register Blueprints ---
-    # Import blueprints *after* db and extensions are initialized if they depend on them
+    # Import blueprints *after* db and extensions might be needed by them
     from .routes.auth import auth_bp
     from .routes.main import main_bp
     from .routes.employee import employee_bp
@@ -97,6 +104,3 @@ def create_app():
 
     print("Flask app created and configured successfully.")
     return app
-
-# Note: get_db() is defined above create_app now.
-# It relies on the global 'db' being set within create_app.

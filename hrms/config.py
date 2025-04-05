@@ -1,8 +1,7 @@
-# hrms/config.py
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv() # Load environment variables from .env file in the root directory
 
 class Config:
     """Base configuration."""
@@ -16,15 +15,13 @@ class Config:
     MONGO_PASSWORD = os.environ.get('MONGO_PASSWORD') # Returns None if not set
     MONGO_AUTHSOURCE = os.environ.get('MONGO_AUTHSOURCE', 'admin') # Default to 'admin' is common
 
-    # You might add other configs here later
+    # Optional: Add other configs here later
     # e.g., ALLOW_REGISTRATION = os.environ.get('ALLOW_REGISTRATION', 'False').lower() in ('true', '1', 't')
-
 
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
     # Add development-specific settings if needed
-
 
 class ProductionConfig(Config):
     """Production configuration."""
@@ -35,7 +32,6 @@ class ProductionConfig(Config):
         # if a proper secret key isn't set via environment variables.
         print("WARNING: Using default SECRET_KEY in production is insecure!")
     # Add production-specific settings
-
 
 config = {
     'development': DevelopmentConfig,
