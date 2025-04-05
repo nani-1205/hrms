@@ -15,38 +15,40 @@ app = create_app()
 @click.password_option(confirmation_prompt=True, help='The password for the admin account.')
 def create_admin_user(username, email, password):
     """Creates the initial administrator user."""
-    with app.app_context(): # Ensure we are within the application context to use get_db()
-        log = app.logger # Get the app's logger
+    # Use app context to ensure DB connection and logger are available
+    with app.app_context():
+        log = app.logger # Get the app's configured logger
 
-        log.info(f"Attempting to create admin user: username='{username}', email='{email}'")
+        log.info(f"Attempting to create admin user via CLI: username='{username}', email='{email}'")
 
         # Basic validation
         if not username or not email or not password:
             click.echo("Error: Username, email, and password are required.")
-            log.error("Admin creation failed: Missing required fields.")
+            log.error("CLI Admin creation failed: Missing required fields.")
             return
 
-        # Check if admin or user with same username/email already exists
-        existing_admin = User.get_collection().find_one({"role": "admin"})
-        if existing_admin:
-            click.echo(f"Error: An admin user ('{existing_admin['username']}') already exists.")
-            log.warning("Admin creation aborted: Admin user already exists.")
-            return
-
-        existing_username = User.get_by_username(username)
-        if existing_username:
-            click.echo(f"Error: Username '{username}' is already taken.")
-            log.warning(f"Admin creation aborted: Username '{username}' already exists.")
-            return
-
-        existing_email = User.get_by_email(email.lower())
-        if existing_email:
-            click.echo(f"Error: Email '{email}' is already registered.")
-            log.warning(f"Admin creation aborted: Email '{email}' already exists.")
-            return
-
-        # Create the new admin user object
         try:
+            # Check if admin or user with same username/email already exists
+            # Need get_collection() which needs get_db(), hence the app_context
+            existing_admin = User.get_collection().find_one({"role": "admin"})
+            if existing_admin:
+                click.echo(f"Error: An admin user ('{existing_admin.get('username', 'N/A')}') already exists.")
+                log.warning("CLI Admin creation aborted: Admin user already exists.")
+                return
+
+            existing_username = User.get_by_username(username)
+            if existing_username:
+                click.echo(f"Error: Username '{username}' is already taken.")
+                log.warning(f"CLI Admin creation aborted: Username '{username}' already exists.")
+                return
+
+            existing_email = User.get_by_email(email.lower())
+            if existing_email:
+                click.echo(f"Error: Email '{email}' is already registered.")
+                log.warning(f"CLI Admin creation aborted: Email '{email}' already exists.")
+                return
+
+            # Create the new admin user object
             admin_user = User(
                 username=username,
                 email=email.lower(), # Store email lowercase
@@ -56,19 +58,20 @@ def create_admin_user(username, email, password):
             admin_user.set_password(password) # Hash the password
 
             # Save the user to the database
-            new_id = admin_user.save()
+            new_id = admin_user.save() # Calls the updated save method
 
             if new_id:
                 click.echo(f"Admin user '{username}' created successfully with ID: {new_id}")
-                log.info(f"Admin user '{username}' created successfully.")
+                log.info(f"Admin user '{username}' created successfully via CLI.")
             else:
-                # This might happen if save() returned None due to an internal error (like duplicate key race condition)
-                click.echo("Error: Failed to save admin user to the database. Check application logs.")
-                log.error("Admin creation failed: User.save() returned None.")
+                # This might happen if save() returned None due to an internal error
+                click.echo("Error: Failed to save admin user to the database. Check application logs for model errors.")
+                log.error("CLI Admin creation failed: User.save() returned None.")
 
         except Exception as e:
+            # Catch any other unexpected errors during the process
             click.echo(f"An unexpected error occurred: {e}")
-            log.error(f"Admin creation failed: Unexpected error - {e}", exc_info=True)
+            log.error(f"CLI Admin creation failed: Unexpected error - {e}", exc_info=True)
 
 
 # --- Run the Development Server ---
@@ -92,4 +95,5 @@ if __name__ == '__main__':
             print(f"   Accessible externally (check your machine's network IP address)")
 
     print(f" * Debug mode: {'on' if debug else 'off'}")
+    # Important: DO NOT use app.run() in production. Use Gunicorn/uWSGI.
     app.run(host=host, port=port, debug=debug)
