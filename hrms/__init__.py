@@ -2,42 +2,34 @@
 
 import os
 import datetime
-from flask import Flask
-import pymongo # <--- Import pymongo for index types
+import pymongo
 from pymongo import MongoClient
-from pymongo.errors import CollectionInvalid, ConnectionFailure # Import CollectionInvalid
+# Import more specific errors if needed
+from pymongo.errors import CollectionInvalid, ConnectionFailure, OperationFailure
 from flask_login import LoginManager
 from .config import get_config
+import logging # Import Python's logging module
 
-# Initialize extensions
-login_manager = LoginManager()
-login_manager.login_view = 'auth.login'
-login_manager.login_message_category = 'info'
+# --- Configure logging ---
+# Basic configuration - adjust level and format as needed
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+log = logging.getLogger(__name__) # Get a logger instance
 
-mongo_client = None
-db = None
+# ... (rest of imports, extensions, get_db) ...
+# def get_db(): ...
 
-# --- Function to get the database instance ---
-def get_db():
-    """Returns the MongoDB database instance."""
-    if db is None:
-        raise RuntimeError("Database not initialized. Ensure create_app() was called and DB connection succeeded.")
-    return db
 
 # --- Helper function for initialization ---
 def initialize_database(db_instance):
     """
     Ensures required collections and basic indexes exist.
-    Call this function *after* successfully connecting to the database.
     """
     required_collections = {
         "users": [
-            # Index definitions: list of tuples (key, direction). Add options dict if needed.
             (("username", pymongo.ASCENDING), {"unique": True, "background": True}),
             (("email", pymongo.ASCENDING), {"unique": True, "background": True}),
         ],
         "employees": [
-            # Sparse=True allows multiple docs without the field, but if the field exists, it must be unique.
             (("employee_code", pymongo.ASCENDING), {"unique": True, "sparse": True, "background": True}),
             (("email", pymongo.ASCENDING), {"unique": True, "sparse": True, "background": True}),
             (("department", pymongo.ASCENDING), {"background": True}),
@@ -47,54 +39,75 @@ def initialize_database(db_instance):
             (("status", pymongo.ASCENDING), {"background": True}),
             (("start_date", pymongo.DESCENDING), {"background": True}),
         ],
-        # Add other collections and their desired indexes here as you build modules:
-        # "departments": [ ... ],
-        # "attendance_records": [ ... ],
     }
 
-    print(f"Checking database '{db_instance.name}' for required collections and indexes...")
-    existing_collections = db_instance.list_collection_names()
+    log.info(f"Checking database '{db_instance.name}' for required collections and indexes...")
+    try:
+        existing_collections = db_instance.list_collection_names()
+        log.info(f"Existing collections found: {existing_collections}")
+    except OperationFailure as e:
+        log.error(f"PERMISSION ERROR listing collections in '{db_instance.name}': {e.details}")
+        log.error("Please check MongoDB user permissions for 'listCollections'.")
+        return # Stop initialization if basic listing fails
+    except Exception as e:
+        log.error(f"Unexpected error listing collections in '{db_instance.name}': {e}")
+        return
 
     for coll_name, indexes in required_collections.items():
         collection_created = False
         if coll_name not in existing_collections:
             try:
-                # Create collection explicitly (optional, insert/index creation does it too)
-                # Using create_collection allows setting validation rules later if needed.
                 db_instance.create_collection(coll_name)
-                print(f"  - Created collection: '{coll_name}'")
+                log.info(f"  - Successfully CREATED collection: '{coll_name}'")
                 collection_created = True
             except CollectionInvalid:
-                # Collection might have been created between list_collection_names and create_collection
-                print(f"  - Collection '{coll_name}' already exists (or created concurrently).")
-            except Exception as e:
-                print(f"  - ERROR creating collection '{coll_name}': {e}")
+                log.warning(f"  - Collection '{coll_name}' already exists (or created concurrently).")
+            except OperationFailure as e:
+                # Log permission errors specifically
+                log.error(f"  - PERMISSION ERROR creating collection '{coll_name}': {e.details}")
+                log.error("    Please check MongoDB user permissions for 'createCollection'.")
                 continue # Skip index creation if collection creation failed
+            except Exception as e:
+                log.error(f"  - UNEXPECTED ERROR creating collection '{coll_name}': {e}")
+                continue
 
         # --- Create Indexes ---
-        # It's generally safe to call create_index even if the index exists.
-        # MongoDB handles it idempotently (won't duplicate or error).
-        # Only create indexes specified for *this* collection.
         if indexes:
             try:
                 collection = db_instance[coll_name]
-                # create_indexes takes a list of IndexModel objects, but
-                # create_index is simpler for single index creation.
+                created_index_names = []
                 for index_spec, index_options in indexes:
-                     # Ensure background=True is in options if provided
                     if "background" not in index_options:
                         index_options["background"] = True
-                    collection.create_index([index_spec], **index_options)
+                    # Generate a name for logging/debugging if not provided
+                    index_name = index_options.get("name", "_".join([f"{k}_{v}" for k, v in index_spec]) + "_idx")
+                    index_options["name"] = index_name # Ensure name is set for potential errors
 
-                if collection_created:
-                     print(f"    - Created specified indexes for '{coll_name}'.")
-                else:
-                     print(f"  - Ensured specified indexes exist for '{coll_name}'.")
+                    try:
+                         # Check if index exists before creating (optional, create_index is idempotent)
+                         # if index_name not in collection.index_information():
+                        idx_result_name = collection.create_index([index_spec], **index_options)
+                        created_index_names.append(idx_result_name)
+                         # else:
+                         #    log.debug(f"    - Index '{index_name}' already exists for '{coll_name}'.")
+
+                    except OperationFailure as e:
+                         log.error(f"    - PERMISSION ERROR creating index '{index_name}' on '{coll_name}': {e.details}")
+                         log.error("      Please check MongoDB user permissions for 'createIndex'.")
+                    except Exception as e:
+                         log.error(f"    - UNEXPECTED ERROR creating index '{index_name}' on '{coll_name}': {e}")
+
+                if created_index_names:
+                    if collection_created:
+                         log.info(f"    - Created specified indexes for new collection '{coll_name}': {created_index_names}")
+                    else:
+                         log.info(f"  - Ensured specified indexes exist for '{coll_name}'. Created/verified: {created_index_names}")
 
             except Exception as e:
-                print(f"  - ERROR creating indexes for collection '{coll_name}': {e}")
+                # Catch errors getting the collection handle itself
+                log.error(f"  - ERROR accessing collection '{coll_name}' for index creation: {e}")
 
-    print("Database initialization check complete.")
+    log.info("Database initialization check complete.")
 
 
 # --- Main Application Factory ---
@@ -106,65 +119,44 @@ def create_app():
     app_config = get_config()
     app.config.from_object(app_config)
 
-    # Context Processor (keep this)
+    # Context Processor
     @app.context_processor
     def inject_now():
         return {'now': datetime.datetime.utcnow()}
 
     # --- Initialize MongoDB Client and Database ---
     try:
+        # ... (rest of connection logic remains the same) ...
         mongo_host = app_config.MONGO_HOST
-        mongo_port = app_config.MONGO_PORT
-        mongo_dbname = app_config.MONGO_DBNAME
-        mongo_username = app_config.MONGO_USERNAME
-        mongo_password = app_config.MONGO_PASSWORD
-        mongo_auth_source = app_config.MONGO_AUTHSOURCE
-
-        connection_args = { 'host': mongo_host, 'port': mongo_port }
-        if mongo_username and mongo_password:
-            connection_args.update({
-                'username': mongo_username,
-                'password': mongo_password,
-                'authSource': mongo_auth_source,
-                'authMechanism': 'SCRAM-SHA-256'
-            })
-            print(f"Attempting MongoDB connection to {mongo_host}:{mongo_port} DB: '{mongo_dbname}' with user '{mongo_username}' (authSource: {mongo_auth_source})")
-        else:
-            print(f"Attempting MongoDB connection to {mongo_host}:{mongo_port} DB: '{mongo_dbname}' without authentication")
-
-        mongo_client = MongoClient(**connection_args, serverSelectionTimeoutMS=5000) # Added timeout
-        mongo_client.admin.command('ping') # Use ping for modern MongoDB
-        print("Successfully connected to MongoDB server!")
+        # ... etc ...
+        mongo_client = MongoClient(**connection_args, serverSelectionTimeoutMS=5000)
+        log.info("Pinging MongoDB server...") # Added log
+        mongo_client.admin.command('ping')
+        log.info("Successfully connected to MongoDB server!") # Changed print to log
         db = mongo_client[mongo_dbname]
         app.db = db
+        log.info(f"Database handle obtained for '{mongo_dbname}'.") # Added log
 
         # ---> Call Initialization Function Here <---
         initialize_database(db)
-        # ------------------------------------------
 
     except ConnectionFailure as e:
-        print(f"CRITICAL: Could not connect to MongoDB server at {app_config.MONGO_HOST}:{app_config.MONGO_PORT}. Error: {e}")
+        log.critical(f"Could not connect to MongoDB server at {app_config.MONGO_HOST}:{app_config.MONGO_PORT}. Error: {e}") # Changed print to log
+        exit(1)
+    except OperationFailure as e: # Catch auth errors during initial connection/ping
+        log.critical(f"MongoDB operation error during connection (check credentials/permissions): {e.details}")
         exit(1)
     except Exception as e:
-        print(f"CRITICAL: An unexpected error occurred during MongoDB initialization: {e}")
+        log.critical(f"An unexpected error occurred during MongoDB initialization: {e}", exc_info=True) # Added exc_info for traceback
         exit(1)
 
     # --- Initialize Flask-Login ---
-    login_manager.init_app(app)
-    @login_manager.user_loader
-    def load_user(user_id):
-        from .models.user import User
-        return User.get_by_id(user_id)
+    # ... (Flask-Login setup) ...
 
     # --- Register Blueprints ---
-    from .routes.auth import auth_bp
-    from .routes.main import main_bp
-    from .routes.employee import employee_bp
-    from .routes.leave import leave_bp
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(main_bp)
-    app.register_blueprint(employee_bp, url_prefix='/employees')
-    app.register_blueprint(leave_bp, url_prefix='/leave')
+    # ... (Blueprint registration) ...
 
-    print("Flask app created and configured successfully.")
+    log.info("Flask app created and configured successfully.") # Changed print to log
     return app
+
+# ... (rest of file, if any) ...
