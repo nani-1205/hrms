@@ -1,0 +1,6 @@
+Flask
+pymongo
+python-dotenv
+werkzeug  # For password hashing (usually comes with Flask)
+Flask-Login # For session management
+bcrypt    # Alternative stronger password hashing

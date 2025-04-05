@@ -1,0 +1,42 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white text-center">
+                <h4>{{ title }}</h4>
+            </div>
+            <div class="card-body p-4">
+                 {% include 'partials/_flash_messages.html' %} {# Show flash messages specific to login attempt #}
+                <form method="POST" action="{{ url_for('auth.login') }}{{ '?next=' + request.args.get('next') if request.args.get('next') else '' }}" novalidate>
+                     {# Add CSRF token if using Flask-WTF #}
+                     {# {{ form.csrf_token }} #}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                        <label class="form-check-label" for="remember">Remember Me</label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                 {# Link to registration only if applicable #}
+                 {% if config.ALLOW_REGISTRATION %} {# Example: Add ALLOW_REGISTRATION to Flask config #}
+                 <small>Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></small><br>
+                 {% endif %}
+                 <small><a href="#">Forgot Password?</a></small> {# Add forgot password link #}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

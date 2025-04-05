@@ -1,0 +1,8 @@
+{# hrms/templates/macros.html #}
+
+{% macro display_field(label, value, default='N/A') %}
+<div class="mb-2">
+    <strong class="text-muted">{{ label }}:</strong><br>
+    <span>{{ value if value else default }}</span>
+</div>
+{% endmacro %}

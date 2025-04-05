@@ -1,0 +1,67 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Dashboard</h1>
+
+    <div class="alert alert-success" role="alert">
+      Welcome back, <strong>{{ username }}</strong>! Your role is: <strong>{{ role | capitalize }}</strong>.
+    </div>
+
+    {# Add Dashboard Widgets/Cards Here #}
+    <div class="row">
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-users me-2"></i>Employees</h5>
+                    <p class="card-text">View and manage employee information.</p>
+                     {# Maybe show count: <p class="display-6">{{ total_employees }}</p> #}
+                    <a href="{{ url_for('employee.list_employees') }}" class="btn btn-primary">Go to Employees</a>
+                </div>
+            </div>
+        </div>
+
+         <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-calendar-alt me-2"></i>Leave Management</h5>
+                    <p class="card-text">Request leave or manage leave requests.</p>
+                     <a href="{{ url_for('leave.request_leave') }}" class="btn btn-primary">Request Leave</a>
+                     {% if current_user.role in ['manager', 'hr', 'admin'] %}
+                         <a href="{{ url_for('leave.view_approvals') }}" class="btn btn-outline-secondary mt-2">View Approvals</a>
+                     {% endif %}
+                </div>
+            </div>
+        </div>
+
+         <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-clock me-2"></i>Attendance</h5>
+                    <p class="card-text">View attendance records (Module not fully implemented).</p>
+                    <a href="#" class="btn btn-secondary disabled">View Attendance</a>
+                </div>
+            </div>
+        </div>
+
+        {# Add more cards for Payroll, Settings, Reports etc. based on roles #}
+
+        {% if current_user.role in ['admin', 'hr'] %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-cog me-2"></i>Admin Settings</h5>
+                    <p class="card-text">Manage users, departments, roles.</p>
+                    {# Link to specific admin pages when created #}
+                    <a href="#" class="btn btn-warning disabled">Admin Panel</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div> {# End row #}
+
+    {# You can add more sections like 'Pending Tasks', 'Announcements' etc. #}
+
+</div>
+{% endblock %}

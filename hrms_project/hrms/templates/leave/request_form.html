@@ -1,0 +1,56 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+{# Include form_data if validation failed to repopulate fields #}
+{% set fd = form_data or {} %}
+
+<form method="POST" action="{{ url_for('leave.request_leave') }}" class="needs-validation" novalidate>
+    <div class="row g-3">
+         <div class="col-md-6">
+            <label for="leave_type" class="form-label">Leave Type <span class="text-danger">*</span></label>
+            <select class="form-select" id="leave_type" name="leave_type" required>
+                <option value="" disabled {% if not fd.leave_type %}selected{% endif %}>Select Type...</option>
+                {% for type in leave_types %}
+                    <option value="{{ type }}" {% if fd.leave_type == type %}selected{% endif %}>{{ type }}</option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">Please select a leave type.</div>
+        </div>
+
+         <div class="col-md-6">
+             {# Placeholder for Leave Balance - Requires backend logic #}
+             <label class="form-label">Available Balance</label>
+             <input type="text" class="form-control" value="N/A (Feature coming soon)" disabled readonly>
+         </div>
+
+        <div class="col-md-6">
+            <label for="start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ fd.start_date or '' }}" required>
+            <div class="invalid-feedback">Please select a start date.</div>
+        </div>
+        <div class="col-md-6">
+            <label for="end_date" class="form-label">End Date <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ fd.end_date or '' }}" required>
+            <div class="invalid-feedback">Please select an end date.</div>
+        </div>
+         <div class="col-12">
+            <label for="reason" class="form-label">Reason <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="reason" name="reason" rows="3" required>{{ fd.reason or '' }}</textarea>
+            <div class="invalid-feedback">Please provide a reason for your leave.</div>
+        </div>
+    </div>
+
+     <hr class="my-4">
+
+    <button class="btn btn-primary btn-lg" type="submit">Submit Request</button>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary btn-lg">Cancel</a>
+
+</form>
+
+{# Add Bootstrap validation script if needed #}
+<script>
+(function () { /* ... Bootstrap validation script ... */ })();
+</script>
+{% endblock %}

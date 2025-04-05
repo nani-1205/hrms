@@ -1,0 +1,65 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+             <div class="card-header bg-primary text-white text-center">
+                <h4>{{ title }}</h4>
+            </div>
+            <div class="card-body p-4">
+                 {% include 'partials/_flash_messages.html' %}
+                <form method="POST" action="{{ url_for('auth.register') }}" class="needs-validation" novalidate>
+                    {# Add CSRF token if using Flask-WTF #}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ username or '' }}" required>
+                         <div class="invalid-feedback">Username is required.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" required>
+                         <div class="invalid-feedback">Please enter a valid email.</div>
+                    </div>
+                     <div class="mb-3">
+                        <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                         <div class="invalid-feedback">Password is required.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password2" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password2" name="password2" required>
+                         <div class="invalid-feedback">Please confirm your password.</div>
+                    </div>
+
+                    {# Optional: Role selection - Only show if appropriate (e.g., admin creating user) #}
+                    {# Consider security implications of allowing users to select their own role! #}
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role">
+                            <option value="employee" selected>Employee</option>
+                            <option value="manager">Manager</option>
+                            <option value="hr">HR</option>
+                            <option value="admin">Admin</option>
+                         </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Register</button>
+                    </div>
+                </form>
+            </div>
+             <div class="card-footer text-center">
+                 <small>Already have an account? <a href="{{ url_for('auth.login') }}">Login here</a></small>
+             </div>
+        </div>
+    </div>
+</div>
+
+{# Add Bootstrap validation script if needed (same as in employee/form.html) #}
+<script>
+(function () { /* ... Bootstrap validation script ... */ })();
+</script>
+{% endblock %}

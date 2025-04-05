@@ -1,0 +1,10 @@
+/* Add your custom styles here */
+body {
+    padding-bottom: 60px; /* Adjust if footer height changes */
+}
+
+.card-title i {
+    color: #0d6efd; /* Primary color for icons in cards */
+}
+
+/* Add more specific styles for modules */
