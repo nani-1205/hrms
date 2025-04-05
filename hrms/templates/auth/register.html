@@ -4,62 +4,73 @@
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
         <div class="card shadow-sm">
-             <div class="card-header bg-primary text-white text-center">
+             <div class="card-header bg-success text-white text-center"> {# Changed color #}
                 <h4>{{ title }}</h4>
             </div>
             <div class="card-body p-4">
+                 {# Flash messages will appear here via base.html or add include here if preferred #}
                  {% include 'partials/_flash_messages.html' %}
+
                 <form method="POST" action="{{ url_for('auth.register') }}" class="needs-validation" novalidate>
-                    {# Add CSRF token if using Flask-WTF #}
+                    {# Add CSRF token here if you implement Flask-WTF #}
+                    {# {{ form.csrf_token }} #}
+
                     <div class="mb-3">
                         <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="username" name="username" value="{{ username or '' }}" required>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ username or '' }}" required aria-describedby="usernameHelp">
+                         <div id="usernameHelp" class="form-text">Use letters, numbers, or underscores.</div>
                          <div class="invalid-feedback">Username is required.</div>
                     </div>
+
                     <div class="mb-3">
                         <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
                         <input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" required>
                          <div class="invalid-feedback">Please enter a valid email.</div>
                     </div>
+
                      <div class="mb-3">
                         <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="password" name="password" required>
+                        <input type="password" class="form-control" id="password" name="password" required aria-describedby="passwordHelp">
+                         <div id="passwordHelp" class="form-text">Choose a strong password.</div>
                          <div class="invalid-feedback">Password is required.</div>
                     </div>
+
                     <div class="mb-3">
                         <label for="password2" class="form-label">Confirm Password <span class="text-danger">*</span></label>
                         <input type="password" class="form-control" id="password2" name="password2" required>
                          <div class="invalid-feedback">Please confirm your password.</div>
                     </div>
 
-                    {# Optional: Role selection - Only show if appropriate (e.g., admin creating user) #}
-                    {# Consider security implications of allowing users to select their own role! #}
-                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
-                    <div class="mb-3">
-                        <label for="role" class="form-label">Role</label>
-                        <select class="form-select" id="role" name="role">
-                            <option value="employee" selected>Employee</option>
-                            <option value="manager">Manager</option>
-                            <option value="hr">HR</option>
-                            <option value="admin">Admin</option>
-                         </select>
-                    </div>
-                    {% endif %}
+                    {# Role selection is typically NOT shown during self-registration #}
+                    {# If admins create users, this form might be reused with role selection enabled #}
 
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Register</button>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-success">Create Account</button> {# Changed color #}
                     </div>
                 </form>
             </div>
-             <div class="card-footer text-center">
+             <div class="card-footer text-center bg-light"> {# Added bg-light #}
                  <small>Already have an account? <a href="{{ url_for('auth.login') }}">Login here</a></small>
              </div>
         </div>
     </div>
 </div>
 
-{# Add Bootstrap validation script if needed (same as in employee/form.html) #}
+{# Optional: Add Bootstrap validation script if needed (same as in employee/form.html) #}
 <script>
-(function () { /* ... Bootstrap validation script ... */ })();
+(function () {
+  'use strict'
+  var forms = document.querySelectorAll('.needs-validation')
+  Array.prototype.slice.call(forms)
+    .forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+        form.classList.add('was-validated')
+      }, false)
+    })
+})()
 </script>
 {% endblock %}
